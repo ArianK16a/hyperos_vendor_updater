@@ -33,22 +33,15 @@ xiaomi_mirror_url = "https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.a
 
 hos_version_pattern = r"OS[.0-9]+[VW][LMN][A-Z]+((CN)|(MI))XM"
 
+# fingerprint format: brand/name/device:release/id/incremental:type/tags
+build_fingerprint_format = "{}/{}/{}:{}/{}/{}:{}/{}"
+# build desc format: name-type release id incremental keys
+build_desc_format = "{}-{} {} {} {} {}"
+
 
 def version_key(version):
     # split by digit sequences
     return [int(i) for i in re.split(r"(\d+)", version) if i.isdigit()]
-
-
-# fingerprint format: brand/name/device:release/build_id/incremental:build_type/tags
-# build desc format: name-build_type version build_id incremental keys
-def build_desc_from_fingerprint(fingerprint: str) -> str:
-    device_info, version_info, build_info = fingerprint.split(":")
-
-    brand, name, device = device_info.split("/")
-    release, build_id, incremental = version_info.split("/")
-    build_type, tags = build_info.split("/")
-
-    return f"{name}-{build_type} {release} {build_id} {incremental} {tags}"
 
 
 for codename, branch in devices:
@@ -124,22 +117,42 @@ for codename, branch in devices:
     ) as f:
         text = f.read()
 
-    # OTA metadata can include multiple fingeprints, separated by |
-    # search for the one matching the device
-    post_build = re.search(r"(?<=post-build=)[-_a-zA-Z0-9/:.|]+", text).group(0)
-    build_fingerprints = post_build.split("|")
-    build_fingerprint = None
-    for fingerprint in build_fingerprints:
-        device_info, _, _ = fingerprint.split(":")
-        _, _, device = device_info.split("/")
-        if device == codename:
-            build_fingerprint = fingerprint
-            break
-    if not build_fingerprint:
-        print("failed to get fingerprint from OTA metadata!")
-        continue
+    # Load build properties, priority from low to high
+    build_properties = {}
+    for prop_file in [
+        os.path.join(dump_dir, "product", "etc", "build.prop"),
+        os.path.join(dump_dir, "vendor", "build.prop"),
+        os.path.join(dump_dir, "vendor", f"{codename}_build.prop"),
+    ]:
+        if os.path.isfile(prop_file):
+            with open(prop_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or line.startswith("import"):
+                        continue
 
-    build_desc = build_desc_from_fingerprint(build_fingerprint)
+                    key, value = line.split("=", 1)
+                    key, value = key.strip(), value.strip()
+                    build_properties[key] = value
+
+    build_fingerprint = build_fingerprint_format.format(
+        build_properties["ro.product.vendor.brand"],
+        build_properties["ro.product.vendor.name"],
+        build_properties["ro.product.vendor.device"],
+        build_properties["ro.product.build.version.release"],
+        build_properties["ro.product.build.id"],
+        build_properties["ro.product.build.version.incremental"],
+        build_properties["ro.product.build.type"],
+        build_properties["ro.product.build.tags"],
+    )
+    build_desc = build_desc_format.format(
+        build_properties["ro.product.vendor.name"],
+        build_properties["ro.product.build.type"],
+        build_properties["ro.product.build.version.release"],
+        build_properties["ro.product.build.id"],
+        build_properties["ro.product.build.version.incremental"],
+        build_properties["ro.product.build.tags"],
+    )
 
     with open(os.path.join(device_tree_path, f"lineage_{codename}.mk"), "r", encoding="utf-8") as f:
         text = f.read()

@@ -31,6 +31,8 @@ review_branch = "lineage-23.0"
 hos_fans_url = "https://raw.githubusercontent.com/HegeKen/HyperData/refs/heads/main/devices/{}.json"
 xiaomi_mirror_url = "https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/{}/{}"
 
+hos_version_pattern = r"OS[.0-9]+[VW][LMN][A-Z]+((CN)|(MI))XM"
+
 
 def version_key(version):
     # split by digit sequences
@@ -75,6 +77,7 @@ for codename, branch in devices:
     rom = roms[version]
 
     archive_dir = os.path.join(vendor_root, "archive", codename, version)
+    dump_dir = os.path.join(archive_dir, Path(rom["recovery"]).stem)
     os.makedirs(archive_dir, exist_ok=True)
 
     recovery_path = os.path.join(archive_dir, rom["recovery"])
@@ -83,6 +86,14 @@ for codename, branch in devices:
             f"downloading {xiaomi_mirror_url.format(version, rom['recovery'])} to {recovery_path}"
         )
         urlretrieve(xiaomi_mirror_url.format(version, rom["recovery"]), recovery_path)
+    elif os.path.isdir(dump_dir):
+        with open(
+            os.path.join(device_tree_path, "proprietary-files.txt"), "r", encoding="utf-8"
+        ) as f:
+            text = f.read()
+        if re.search(hos_version_pattern, text).group(0) == version:
+            print(f"{codename} is already update to {version}")
+            continue
 
     # Dump / extract-files.py
     subprocess.run(
@@ -92,18 +103,17 @@ for codename, branch in devices:
     )
 
     # symlink to quickly interact with the latest dump
-    dump_dir = os.path.join(vendor_root, codename)
-    if os.path.isdir(dump_dir):
-        os.unlink(dump_dir)
-    os.symlink(os.path.join(archive_dir, Path(rom["recovery"]).stem), dump_dir)
+    dump_link = os.path.join(vendor_root, codename)
+    if os.path.isdir(dump_link):
+        os.unlink(dump_link)
+    os.symlink(os.path.join(archive_dir, Path(rom["recovery"]).stem), dump_link)
 
     # update version in files
     for file in ["proprietary-files.txt", "proprietary-firmware.txt"]:
         with open(os.path.join(device_tree_path, file), "r", encoding="utf-8") as f:
             text = f.read()
 
-        version_pattern = r"OS[.0-9]+[VW][LMN][A-Z]+((CN)|(MI))XM"
-        text = re.sub(version_pattern, version, text, count=1)
+        text = re.sub(hos_version_pattern, version, text, count=1)
 
         with open(os.path.join(device_tree_path, file), "w", encoding="utf-8") as f:
             f.write(text)

@@ -14,6 +14,10 @@ devices = [
 android_root = "/home/arian/android/lineage-23/"
 vendor_root = "/home/arian/android/vendor/sm8450/"
 
+review_url = "ssh://{}@review.lineageos.org:29418/LineageOS/{}"
+review_user = "ArianK16a"
+review_branch = "lineage-23.0"
+
 hos_fans_url = "https://raw.githubusercontent.com/HegeKen/HyperData/refs/heads/main/devices/{}.json"
 xiaomi_mirror_url = "https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/{}/{}"
 
@@ -133,3 +137,13 @@ for codename, branch in devices:
     if vendor_tree_repo.is_dirty(untracked_files=True):
         vendor_tree_repo.git.add(A=True)
         vendor_tree_repo.index.commit(f"{codename}: Update blobs and firmware from {version}")
+
+    if "lineage" not in [r.name for r in device_tree_repo.remotes]:
+        device_tree_repo.create_remote(
+            "lineage", review_url.format(review_user, f"android_device_xiaomi_{codename}")
+        )
+
+    push_result = device_tree_repo.remote(name="lineage").push(f"HEAD:refs/for/{review_branch}")
+    for info in push_result:
+        if info.flags & info.ERROR:
+            print(info.summary)

@@ -124,7 +124,21 @@ for codename, branch in devices:
     ) as f:
         text = f.read()
 
-    build_fingerprint = re.search(r"(?<=post-build=)[-_a-zA-Z0-9/:.]+", text).group(0)
+    # OTA metadata can include multiple fingeprints, separated by |
+    # search for the one matching the device
+    post_build = re.search(r"(?<=post-build=)[-_a-zA-Z0-9/:.|]+", text).group(0)
+    build_fingerprints = post_build.split("|")
+    build_fingerprint = None
+    for fingerprint in build_fingerprints:
+        device_info, _, _ = fingerprint.split(":")
+        _, _, device = device_info.split("/")
+        if device == codename:
+            build_fingerprint = fingerprint
+            break
+    if not build_fingerprint:
+        print("failed to get fingerprint from OTA metadata!")
+        continue
+
     build_desc = build_desc_from_fingerprint(build_fingerprint)
 
     with open(os.path.join(device_tree_path, f"lineage_{codename}.mk"), "r", encoding="utf-8") as f:

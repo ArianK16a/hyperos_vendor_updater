@@ -47,7 +47,7 @@ def version_key(version):
 for codename, branch in devices:
     device_tree_path = os.path.join(android_root, "device", "xiaomi", codename)
     device_tree_repo = Repo(device_tree_path)
-    if device_tree_repo.is_dirty():
+    if device_tree_repo.is_dirty(untracked_files=True):
         print(f"Skipping {codename} because the device_tree_repo is dirty!")
         continue
 
@@ -177,7 +177,7 @@ for codename, branch in devices:
         f.write(text)
 
     # Commit changes
-    if device_tree_repo.is_dirty():
+    if device_tree_repo.is_dirty(untracked_files=True):
         device_tree_repo.git.add(A=True)
         device_tree_repo.index.commit(f"{codename}: Update blobs and firmware from {version}")
 

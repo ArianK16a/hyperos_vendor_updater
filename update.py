@@ -103,7 +103,7 @@ for codename, branch in devices:
             text = f.read()
 
         version_pattern = r"OS[.0-9]+[VW][LMN][A-Z]+((CN)|(MI))XM"
-        text = re.sub(version_pattern, version, text)
+        text = re.sub(version_pattern, version, text, count=1)
 
         with open(os.path.join(device_tree_path, file), "w", encoding="utf-8") as f:
             f.write(text)

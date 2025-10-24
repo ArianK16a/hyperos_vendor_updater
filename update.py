@@ -85,7 +85,7 @@ for codename, branch in devices:
         ) as f:
             text = f.read()
         if re.search(hos_version_pattern, text).group(0) == version:
-            print(f"{codename} is already update to {version}")
+            print(f"{codename} is already updated to {version}")
             continue
 
     # Dump / extract-files.py

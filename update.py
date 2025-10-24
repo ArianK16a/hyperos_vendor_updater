@@ -90,6 +90,11 @@ for codename, branch in devices:
 
     # Dump / extract-files.py
     subprocess.run(
+        f"{android_root}/tools/extract-utils/extract.py {recovery_path}",
+        shell=True,
+        executable="/bin/bash",
+    )
+    subprocess.run(
         f"cd {device_tree_path} && ./extract-files.py {recovery_path} --keep-dump --only-target",
         shell=True,
         executable="/bin/bash",

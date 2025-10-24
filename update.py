@@ -6,9 +6,19 @@ from urllib.request import urlopen, urlretrieve
 from pathlib import Path
 from git import Repo, GitCommandError
 
+GL_STABLE = "Xiaomi HyperOS Global Stable"
+CN_STABLE = "Xiaomi HyperOS Stable"
+
 devices = [
-    ("cupid", "Xiaomi HyperOS Global Stable"),
-    ("unicorn", "Xiaomi HyperOS Stable"),
+    ("cupid", GL_STABLE),
+    ("zeus", GL_STABLE),
+    ("mayfly", CN_STABLE),
+    ("unicorn", CN_STABLE),
+    ("thor", CN_STABLE),
+    ("diting", GL_STABLE),
+    ("zizhan", CN_STABLE),
+    ("marble", GL_STABLE),
+    ("mondrian", GL_STABLE),
 ]
 
 android_root = "/home/arian/android/lineage-23/"

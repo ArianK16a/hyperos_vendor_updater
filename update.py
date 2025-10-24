@@ -4,6 +4,7 @@ import re
 import subprocess
 from urllib.request import urlopen, urlretrieve
 from pathlib import Path
+from git import Repo, GitCommandError
 
 devices = [
     ("cupid", "Xiaomi HyperOS Global Stable"),
@@ -36,6 +37,16 @@ def build_desc_from_fingerprint(fingerprint: str) -> str:
 
 for codename, branch in devices:
     device_tree_path = os.path.join(android_root, "device", "xiaomi", codename)
+    device_tree_repo = Repo(device_tree_path)
+    if device_tree_repo.is_dirty():
+        print(f"Skipping {codename} because the device_tree_repo is dirty!")
+        continue
+
+    vendor_tree_path = os.path.join(android_root, "vendor", "xiaomi", codename)
+    vendor_tree_repo = Repo(vendor_tree_path)
+    if vendor_tree_repo.is_dirty(untracked_files=True):
+        print(f"Skipping {codename} because the vendor_tree_repo is dirty!")
+        continue
 
     with urlopen(hos_fans_url.format(codename)) as url:
         data = json.loads(url.read().decode())
@@ -113,3 +124,12 @@ for codename, branch in devices:
 
     with open(os.path.join(device_tree_path, "BoardConfig.mk"), "w", encoding="utf-8") as f:
         f.write(text)
+
+    # Commit changes
+    if device_tree_repo.is_dirty():
+        device_tree_repo.git.add(A=True)
+        device_tree_repo.index.commit(f"{codename}: Update blobs and firmware from {version}")
+
+    if vendor_tree_repo.is_dirty(untracked_files=True):
+        vendor_tree_repo.git.add(A=True)
+        vendor_tree_repo.index.commit(f"{codename}: Update blobs and firmware from {version}")

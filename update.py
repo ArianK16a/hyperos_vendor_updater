@@ -121,11 +121,6 @@ for repo_name, codename, branch, extraction_flags in devices:
             f.write(text)
 
     # update build fingerprint and description
-    with open(
-        os.path.join(dump_dir, "META-INF", "com", "android", "metadata"), "r", encoding="utf-8"
-    ) as f:
-        text = f.read()
-
     # Load build properties, priority from low to high
     build_properties = {}
     for prop_file in [

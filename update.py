@@ -8,17 +8,21 @@ from git import Repo, GitCommandError
 
 GL_STABLE = "Xiaomi HyperOS Global Stable"
 CN_STABLE = "Xiaomi HyperOS Stable"
+EXTRACT_TARGET = "--only-target"
+EXTRACT_ALL = ""
 
+# (repo name, HyperOS codename, HyperOS branch, extraction flags)
 devices = [
-    ("cupid", GL_STABLE),
-    ("zeus", GL_STABLE),
-    ("mayfly", CN_STABLE),
-    ("unicorn", CN_STABLE),
-    ("thor", CN_STABLE),
-    ("diting", GL_STABLE),
-    ("zizhan", CN_STABLE),
-    ("marble", GL_STABLE),
-    ("mondrian", GL_STABLE),
+    ("cupid", "cupid", GL_STABLE, EXTRACT_TARGET),
+    ("zeus", "zeus", GL_STABLE, EXTRACT_TARGET),
+    ("mayfly", "mayfly", CN_STABLE, EXTRACT_TARGET),
+    ("unicorn", "unicorn", CN_STABLE, EXTRACT_TARGET),
+    ("thor", "thor", CN_STABLE, EXTRACT_TARGET),
+    ("diting", "diting", GL_STABLE, EXTRACT_TARGET),
+    ("zizhan", "zizhan", CN_STABLE, EXTRACT_TARGET),
+    ("marble", "marble", GL_STABLE, EXTRACT_TARGET),
+    ("mondrian", "mondrian", GL_STABLE, EXTRACT_TARGET),
+    ("sm8450-common", "diting", GL_STABLE, EXTRACT_ALL),
 ]
 
 android_root = "/home/arian/android/lineage-23/"
@@ -44,17 +48,17 @@ def version_key(version):
     return [int(i) for i in re.split(r"(\d+)", version) if i.isdigit()]
 
 
-for codename, branch in devices:
-    device_tree_path = os.path.join(android_root, "device", "xiaomi", codename)
+for repo_name, codename, branch, extraction_flags in devices:
+    device_tree_path = os.path.join(android_root, "device", "xiaomi", repo_name)
     device_tree_repo = Repo(device_tree_path)
     if device_tree_repo.is_dirty(untracked_files=True):
-        print(f"Skipping {codename} because the device_tree_repo is dirty!")
+        print(f"Skipping {repo_name} because the device_tree_repo is dirty!")
         continue
 
-    vendor_tree_path = os.path.join(android_root, "vendor", "xiaomi", codename)
+    vendor_tree_path = os.path.join(android_root, "vendor", "xiaomi", repo_name)
     vendor_tree_repo = Repo(vendor_tree_path)
     if vendor_tree_repo.is_dirty(untracked_files=True):
-        print(f"Skipping {codename} because the vendor_tree_repo is dirty!")
+        print(f"Skipping {repo_name} because the vendor_tree_repo is dirty!")
         continue
 
     with urlopen(hos_fans_url.format(codename)) as url:
@@ -85,7 +89,7 @@ for codename, branch in devices:
         ) as f:
             text = f.read()
         if re.search(hos_version_pattern, text).group(0) == version:
-            print(f"{codename} is already updated to {version}")
+            print(f"{repo_name} is already updated to {version}")
             continue
 
     # Dump / extract-files.py
@@ -95,7 +99,7 @@ for codename, branch in devices:
         executable="/bin/bash",
     )
     subprocess.run(
-        f"cd {device_tree_path} && ./extract-files.py {recovery_path} --keep-dump --only-target",
+        f"cd {device_tree_path} && ./extract-files.py {recovery_path} --keep-dump {extraction_flags}",
         shell=True,
         executable="/bin/bash",
     )
@@ -184,15 +188,15 @@ for codename, branch in devices:
     # Commit changes
     if device_tree_repo.is_dirty(untracked_files=True):
         device_tree_repo.git.add(A=True)
-        device_tree_repo.index.commit(f"{codename}: Update blobs and firmware from {version}")
+        device_tree_repo.index.commit(f"{repo_name}: Update blobs and firmware from {version}")
 
     if vendor_tree_repo.is_dirty(untracked_files=True):
         vendor_tree_repo.git.add(A=True)
-        vendor_tree_repo.index.commit(f"{codename}: Update blobs and firmware from {version}")
+        vendor_tree_repo.index.commit(f"{repo_name}: Update blobs and firmware from {version}")
 
     if "lineage" not in [r.name for r in device_tree_repo.remotes]:
         device_tree_repo.create_remote(
-            "lineage", review_url.format(review_user, f"android_device_xiaomi_{codename}")
+            "lineage", review_url.format(review_user, f"android_device_xiaomi_{repo_name}")
         )
 
     push_result = device_tree_repo.remote(name="lineage").push(f"HEAD:refs/for/{review_branch}")

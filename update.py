@@ -112,12 +112,15 @@ for repo_name, codename, branch, extraction_flags in devices:
 
     # update version in files
     for file in ["proprietary-files.txt", "proprietary-firmware.txt"]:
-        with open(os.path.join(device_tree_path, file), "r", encoding="utf-8") as f:
+        proprietary_list = os.path.join(device_tree_path, file)
+        if not os.path.isfile(proprietary_list):
+            continue
+        with open(os.path.join(device_tree_path, proprietary_list), "r", encoding="utf-8") as f:
             text = f.read()
 
         text = re.sub(hos_version_pattern, version, text, count=1)
 
-        with open(os.path.join(device_tree_path, file), "w", encoding="utf-8") as f:
+        with open(os.path.join(device_tree_path, proprietary_list), "w", encoding="utf-8") as f:
             f.write(text)
 
     # update build fingerprint and description
@@ -158,27 +161,33 @@ for repo_name, codename, branch, extraction_flags in devices:
         build_properties["ro.product.build.tags"],
     )
 
-    with open(os.path.join(device_tree_path, f"lineage_{codename}.mk"), "r", encoding="utf-8") as f:
-        text = f.read()
+    lineage_makefile = os.path.join(device_tree_path, f"lineage_{codename}.mk")
+    if os.path.isfile(lineage_makefile):
+        with open(lineage_makefile, "r", encoding="utf-8") as f:
+            text = f.read()
 
-    text = re.sub(r"(?<=BuildFingerprint=)[-_a-zA-Z0-9/:.]+", build_fingerprint, text)
-    text = re.sub(r'(?<=BuildDesc=").*(?=")', build_desc, text)
+        text = re.sub(r"(?<=BuildFingerprint=)[-_a-zA-Z0-9/:.]+", build_fingerprint, text)
+        text = re.sub(r'(?<=BuildDesc=").*(?=")', build_desc, text)
 
-    with open(os.path.join(device_tree_path, f"lineage_{codename}.mk"), "w", encoding="utf-8") as f:
-        f.write(text)
+        with open(lineage_makefile, "w", encoding="utf-8") as f:
+            f.write(text)
 
     # update vendor security patch level
     with open(os.path.join(dump_dir, "vendor", "build.prop"), "r", encoding="utf-8") as f:
         text = f.read()
     vendor_security_patch = re.search(r"(?<=ro.vendor.build.security_patch=)[-0-9]+", text).group(0)
 
-    with open(os.path.join(device_tree_path, "BoardConfig.mk"), "r", encoding="utf-8") as f:
-        text = f.read()
+    for file in ["BoardConfig.mk", "BoardConfigCommon.mk"]:
+        boardconfig = os.path.join(device_tree_path, file)
+        if not os.path.isfile(boardconfig):
+            continue
+        with open(boardconfig, "r", encoding="utf-8") as f:
+            text = f.read()
 
-    text = re.sub(r"(?<=VENDOR_SECURITY_PATCH := )[-0-9]+", vendor_security_patch, text)
+        text = re.sub(r"(?<=VENDOR_SECURITY_PATCH := )[-0-9]+", vendor_security_patch, text)
 
-    with open(os.path.join(device_tree_path, "BoardConfig.mk"), "w", encoding="utf-8") as f:
-        f.write(text)
+        with open(boardconfig, "w", encoding="utf-8") as f:
+            f.write(text)
 
     # Commit changes
     if device_tree_repo.is_dirty(untracked_files=True):

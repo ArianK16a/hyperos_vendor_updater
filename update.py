@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+#
+# SPDX-FileCopyrightText: ArianK16a <arian.kulmer@web.de>
+# SPDX-License-Identifier: UPL-1.0
+#
+
 import json
 import os.path
 import re

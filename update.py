@@ -5,6 +5,7 @@
 #
 
 import json
+import logging
 import os.path
 import re
 import subprocess
@@ -48,6 +49,10 @@ build_fingerprint_format = "{}/{}/{}:{}/{}/{}:{}/{}"
 # build desc format: name-type release id incremental keys
 build_desc_format = "{}-{} {} {} {} {}"
 
+logging.basicConfig(format="%(asctime)s %(levelname)-6s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 def version_key(version):
     # split by digit sequences
@@ -58,13 +63,13 @@ for repo_name, codename, branch, extraction_flags in devices:
     device_tree_path = os.path.join(android_root, "device", "xiaomi", repo_name)
     device_tree_repo = Repo(device_tree_path)
     if device_tree_repo.is_dirty(untracked_files=True):
-        print(f"Skipping {repo_name} because the device_tree_repo is dirty!")
+        logger.error(f"Skipping {repo_name} because the device_tree_repo is dirty!")
         continue
 
     vendor_tree_path = os.path.join(android_root, "vendor", "xiaomi", repo_name)
     vendor_tree_repo = Repo(vendor_tree_path)
     if vendor_tree_repo.is_dirty(untracked_files=True):
-        print(f"Skipping {repo_name} because the vendor_tree_repo is dirty!")
+        logger.error(f"Skipping {repo_name} because the vendor_tree_repo is dirty!")
         continue
 
     with urlopen(hos_fans_url.format(codename)) as url:
@@ -85,7 +90,7 @@ for repo_name, codename, branch, extraction_flags in devices:
 
     recovery_path = os.path.join(archive_dir, rom["recovery"])
     if not os.path.isfile(recovery_path):
-        print(
+        logger.debug(
             f"downloading {xiaomi_mirror_url.format(version, rom['recovery'])} to {recovery_path}"
         )
         urlretrieve(xiaomi_mirror_url.format(version, rom["recovery"]), recovery_path)
@@ -95,7 +100,7 @@ for repo_name, codename, branch, extraction_flags in devices:
         ) as f:
             text = f.read()
         if re.search(hos_version_pattern, text).group(0) == version:
-            print(f"{repo_name} is already updated to {version}")
+            logger.info(f"{repo_name} is already updated to {version}")
             continue
 
     # Dump / extract-files.py
@@ -212,4 +217,4 @@ for repo_name, codename, branch, extraction_flags in devices:
     push_result = device_tree_repo.remote(name="lineage").push(f"HEAD:refs/for/{review_branch}")
     for info in push_result:
         if info.flags & info.ERROR:
-            print(info.summary)
+            logger.debug(info.summary)
